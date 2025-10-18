@@ -31,34 +31,61 @@ def main():
     # Create agent
     agent = CodingAgent(api_key=api_key)
     print("✓ Agent initialized with Claude 3.5 Sonnet")
+    print("\n💡 Commands:")
+    print("  - 'exit' or 'quit': End the session")
+    print("  - '/reset': Clear conversation history")
+    print("  - '/history': Show conversation stats")
 
-    # Get user prompt
-    print("\n" + "=" * 60)
-    print("What would you like me to help you code?")
-    print("=" * 60)
-
-    user_prompt = input("\n> ").strip()
-
-    if not user_prompt:
-        print("\n❌ No prompt provided. Exiting.")
-        sys.exit(1)
-
-    print(f"\n\nRunning agent with prompt:\n{user_prompt}\n")
-
-    # Run the agent
+    # Continuous session loop
     try:
-        result = agent.run(user_prompt)
-        print("\n" + "=" * 60)
-        print("Task completed!")
-        print("=" * 60)
+        while True:
+            # Get user prompt
+            print("\n" + "=" * 60)
+            print("What would you like me to help you code?")
+            print("=" * 60)
+
+            user_prompt = input("\n> ").strip()
+
+            # Check for exit commands
+            if user_prompt.lower() in ['exit', 'quit', '/exit', '/quit']:
+                print("\n👋 Goodbye!")
+                break
+
+            # Check for reset command
+            if user_prompt.lower() == '/reset':
+                agent.reset_conversation()
+                continue
+
+            # Check for history command
+            if user_prompt.lower() == '/history':
+                msg_count = agent.get_conversation_length()
+                print(f"\n📊 Conversation stats:")
+                print(f"  - Messages in history: {msg_count}")
+                print(f"  - Use '/reset' to clear history")
+                continue
+
+            if not user_prompt:
+                print("⚠️  Empty prompt. Please enter a task or type 'exit' to quit.")
+                continue
+
+            print(f"\n\nRunning agent with prompt:\n{user_prompt}\n")
+
+            # Run the agent
+            try:
+                result = agent.run(user_prompt)
+                print("\n" + "=" * 60)
+                print("✅ Task completed!")
+                print("=" * 60)
+            except Exception as e:
+                print(f"\n\n❌ Error: {e}")
+                import traceback
+                traceback.print_exc()
+                print("\n⚠️  Continuing to next task...")
+
     except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted by user. Exiting...")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n\n❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+        print("\n\n👋 Interrupted by user. Goodbye!")
+    except EOFError:
+        print("\n\n👋 Goodbye!")
 
 
 if __name__ == "__main__":

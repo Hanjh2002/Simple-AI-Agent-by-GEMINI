@@ -46,13 +46,11 @@ Always explain what you're doing and why."""
         Returns:
             The final response from Claude
         """
-        # Initialize conversation with user's prompt
-        self.conversation_history = [
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ]
+        # Add user's prompt to existing conversation history
+        self.conversation_history.append({
+            "role": "user",
+            "content": user_prompt
+        })
 
         iteration = 0
 
@@ -153,3 +151,12 @@ Always explain what you're doing and why."""
     def get_conversation_history(self) -> List[Dict[str, Any]]:
         """Get the full conversation history."""
         return self.conversation_history
+
+    def reset_conversation(self):
+        """Reset the conversation history to start fresh."""
+        self.conversation_history = []
+        print("🔄 Conversation history cleared. Starting fresh!")
+
+    def get_conversation_length(self) -> int:
+        """Get the number of messages in the conversation history."""
+        return len(self.conversation_history)
