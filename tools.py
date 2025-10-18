@@ -5,7 +5,8 @@ Each tool has a schema (for Claude) and an execute function.
 
 import os
 import subprocess
-from typing import Dict, Any
+from typing import Dict, Any, List
+from ddgs import DDGS
 
 
 # Tool schemas for Claude API
@@ -76,6 +77,25 @@ TOOL_SCHEMAS = [
                 }
             },
             "required": ["command"]
+        }
+    },
+    {
+        "name": "web_search",
+        "description": "Search the web for information using DuckDuckGo. Use this when you need current information, facts, documentation, or answers that aren't in local files. Returns a list of search results with titles, URLs, and snippets.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query to look up on the web"
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Maximum number of results to return (default: 5, max: 10)",
+                    "default": 5
+                }
+            },
+            "required": ["query"]
         }
     }
 ]
@@ -206,12 +226,47 @@ def shell_command(command: str) -> Dict[str, Any]:
         }
 
 
+def web_search(query: str, max_results: int = 5) -> Dict[str, Any]:
+    """Search the web using DuckDuckGo and return results."""
+    try:
+        # Limit max_results to 10 to avoid overwhelming context
+        max_results = min(max_results, 10)
+
+        # Perform search using DuckDuckGo
+        ddgs = DDGS()
+        results = ddgs.text(query, max_results=max_results)
+
+        # Format results for better readability
+        formatted_results = []
+        for idx, result in enumerate(results, 1):
+            formatted_results.append({
+                "position": idx,
+                "title": result.get("title", ""),
+                "url": result.get("href", ""),
+                "snippet": result.get("body", "")
+            })
+
+        return {
+            "success": True,
+            "query": query,
+            "results_count": len(formatted_results),
+            "results": formatted_results
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error performing web search: {str(e)}",
+            "query": query
+        }
+
+
 # Map tool names to their execution functions
 TOOL_FUNCTIONS = {
     "read_file": read_file,
     "write_file": write_file,
     "edit_file": edit_file,
-    "shell_command": shell_command
+    "shell_command": shell_command,
+    "web_search": web_search
 }
 
 

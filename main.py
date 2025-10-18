@@ -34,7 +34,7 @@ def main():
 
     # Create agent
     agent = CodingAgent(api_key=api_key)
-    print_success("Agent initialized with Claude 3.5 Sonnet")
+    print_success("Agent initialized with Claude Sonnet 4.5")
     print()
     print_info("Available commands:")
     print(dim("  - 'exit' or 'quit': End the session"))
