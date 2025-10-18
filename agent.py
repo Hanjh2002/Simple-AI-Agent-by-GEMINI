@@ -7,6 +7,10 @@ import os
 from typing import List, Dict, Any
 from anthropic import Anthropic
 from tools import TOOL_SCHEMAS, execute_tool
+from ui import (
+    info, warning, error, success, tool_color, dim, bold,
+    print_warning, print_success, print_info, CROSS
+)
 
 
 class CodingAgent:
@@ -57,9 +61,9 @@ Always explain what you're doing and why."""
         # ReAct loop: Reason -> Act -> Observe
         while iteration < max_iterations:
             iteration += 1
-            print(f"\n{'='*60}")
-            print(f"Iteration {iteration}/{max_iterations}")
-            print(f"{'='*60}")
+            print(f"\n{dim('='*60)}")
+            print(f"{bold(f'Iteration {iteration}/{max_iterations}')}")
+            print(f"{dim('='*60)}")
 
             # Call Claude with current conversation history
             response = self.client.messages.create(
@@ -70,8 +74,8 @@ Always explain what you're doing and why."""
                 messages=self.conversation_history
             )
 
-            print(f"\nClaude's response:")
-            print(f"Stop reason: {response.stop_reason}")
+            print(f"\n{dim('Claude response:')}")
+            print(f"{dim(f'Stop reason: {response.stop_reason}')}")
 
             # Add Claude's response to conversation history
             assistant_message = {
@@ -88,19 +92,20 @@ Always explain what you're doing and why."""
                 # Also show any thinking/text before tool use
                 text_blocks = [block for block in response.content if block.type == "text"]
                 for text_block in text_blocks:
-                    print(f"\nClaude's thinking: {text_block.text}")
+                    print(f"\n{dim('Claude thinking:')}")
+                    print(f"{text_block.text}")
 
                 # Execute each tool
                 tool_results = []
                 for tool_use in tool_uses:
-                    print(f"\n[TOOL USE] {tool_use.name}")
-                    print(f"Parameters: {tool_use.input}")
+                    print(f"\n{tool_color(f'[TOOL] {tool_use.name}')}")
+                    print(f"{dim(f'Parameters: {tool_use.input}')}")
 
                     # Ask for user confirmation for dangerous operations
                     if tool_use.name in ["write_file", "edit_file", "shell_command"]:
-                        confirm = input(f"\n⚠️  Allow {tool_use.name}? (y/n): ").strip().lower()
+                        confirm = input(f"\n{warning('[!]')} Allow {tool_use.name}? (y/n): ").strip().lower()
                         if confirm != 'y':
-                            print("❌ Tool execution cancelled by user")
+                            print(f"{error('[CANCELLED]')} Tool execution cancelled by user")
                             tool_result = {
                                 "success": False,
                                 "error": "Tool execution cancelled by user"
@@ -112,7 +117,7 @@ Always explain what you're doing and why."""
                         # Read-only operations don't need confirmation
                         tool_result = execute_tool(tool_use.name, tool_use.input)
 
-                    print(f"Result: {tool_result}")
+                    print(f"{dim('Result:')} {tool_result}")
 
                     # Format result for Claude
                     tool_results.append({
@@ -132,21 +137,21 @@ Always explain what you're doing and why."""
                 text_blocks = [block for block in response.content if block.type == "text"]
                 final_response = "\n".join([block.text for block in text_blocks])
 
-                print(f"\n{'='*60}")
-                print(f"FINAL RESPONSE:")
-                print(f"{'='*60}")
+                print(f"\n{dim('='*60)}")
+                print(f"{bold('FINAL RESPONSE:')}")
+                print(f"{dim('='*60)}")
                 print(final_response)
 
                 return final_response
 
             else:
                 # Unexpected stop reason
-                print(f"\nUnexpected stop reason: {response.stop_reason}")
+                print_warning(f"Unexpected stop reason: {response.stop_reason}")
                 text_blocks = [block for block in response.content if block.type == "text"]
                 return "\n".join([block.text for block in text_blocks])
 
         # Max iterations reached
-        return "⚠️ Maximum iterations reached. The task may not be complete."
+        return warning("Maximum iterations reached. The task may not be complete.")
 
     def get_conversation_history(self) -> List[Dict[str, Any]]:
         """Get the full conversation history."""
@@ -155,7 +160,7 @@ Always explain what you're doing and why."""
     def reset_conversation(self):
         """Reset the conversation history to start fresh."""
         self.conversation_history = []
-        print("🔄 Conversation history cleared. Starting fresh!")
+        print_success("Conversation history cleared. Starting fresh!")
 
     def get_conversation_length(self) -> int:
         """Get the number of messages in the conversation history."""
