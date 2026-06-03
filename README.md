@@ -1,153 +1,48 @@
-# Simple AI Coding Agent
+# 🚀 Building Gemini Code from Scratch: A Simple Journey into AI Agents
 
-A minimal implementation of an AI coding agent inspired by Claude Code and Gemini CLI. This is a learning project to understand how AI coding agents work.
+> **Bản dịch chuyển kiến trúc:** Dự án này được lấy cảm hứng và cải tiến hoàn toàn từ bài viết nổi tiếng trên Medium của tác giả JBY về việc tự xây dựng một AI Coding Assistant (như Claude Code, Cursor) chỉ với ~300 dòng code Python thuần mà không cần dùng đến các framework cồng kềnh như LangChain, LangGraph hay CrewAI. 
+> 
+> Phiên bản này đã được tối ưu hóa 100% sang **Google Gemini API (Gói Free Tier từ Google AI Studio)**, đồng thời giải quyết triệt để các lỗi kết nối mạng doanh nghiệp (SSL Proxy Interception) và lỗi giới hạn lượt gọi của các thư viện cào web miễn phí.
 
-## What It Does
+---
 
-This agent uses Anthropic's Claude API with a **ReAct (Reason + Act) loop** to help you with coding tasks. It can:
+## 📌 Câu hỏi lớn: Tại sao lại tự code từ đầu (From Scratch) mà không dùng Framework?
 
-- **Read files** - Understand your existing codebase
-- **Write files** - Create new files from scratch
-- **Edit files** - Make targeted changes to existing files
-- **Execute shell commands** - Run tests, install packages, etc.
+Khi bắt đầu nghiên cứu về AI Agent, chúng ta rất dễ bị choáng ngợp bởi tài liệu của LangChain hay CrewAI. Các khái niệm trừu tượng (Abstractions) quá phức tạp khiến việc học trở nên nặng nề. Đúng như một bài báo công nghệ năm 2025 đã chỉ ra:
 
-## Architecture
+> *"Companies often adopt 'unearned complexity' by deciding on LangChain or multi-agentic solutions without experimenting enough to understand if they actually need that complexity."*
+> *(Các công ty thường gánh chịu 'sự phức tạp không đáng có' khi vội vã chọn giải pháp đa agent hoặc LangChain mà chưa thử nghiệm đủ để biết mình có thực sự cần nó hay không).*
 
-The project consists of three main components:
+Dự án này chọn một cách tiếp cận khác: **Xây dựng thứ đơn giản nhất có thể hoạt động, và chỉ thêm sự phức tạp khi thực sự cần thiết.** Kết quả là chúng ta tạo ra một Agent mạnh mẽ trong ~300 dòng code qua 4 file, không lớp trừu tượng, không phụ thuộc framework, cực kỳ dễ debug và kiểm soát.
 
-1. **tools.py** - Defines the 4 tools (read, write, edit, shell) with JSON schemas for Claude
-2. **agent.py** - Implements the ReAct loop that calls Claude API and executes tools iteratively
-3. **main.py** - Simple CLI interface for user interaction
+---
 
-### How the ReAct Loop Works
+## 🛠️ Những gì chúng ta đã xây dựng
 
-```
-User Prompt
-    ↓
-[Claude thinks and decides what to do]
-    ↓
-Does Claude want to use a tool?
-    ├─ YES → Execute tool → Add result to conversation → Loop back to Claude
-    └─ NO  → Return final answer to user
-```
+Hệ thống mã nguồn này sở hữu đầy đủ các thành phần tiêu chuẩn của một Agent công nghiệp:
 
-Claude iteratively uses tools until it completes the task or reaches max iterations (15).
+1. **Hệ thống 5 công cụ (Tools Layer):** Đọc file, tạo file, sửa đổi khối chữ, ghi nối vào cuối file, và thực thi lệnh Terminal cục bộ.
+2. **Vòng lặp ReAct (Reason + Act):** Mô hình tư duy chuẩn ngành giúp Agent tự trị lặp lại chuỗi hành động: *Suy nghĩ (Think) ➔ Hành động (Act) ➔ Quan sát kết quả (Observe)* cho đến khi hoàn thành tác vụ.
+3. **Bộ nhớ hội thoại tự động (Conversation Memory):** Duy trì toàn bộ ngữ cảnh giúp Agent nhớ được mình đã làm gì ở các bước trước đó.
+4. **Bảo mật Human-in-the-Loop:** Cơ chế chặn và hỏi ý kiến người dùng (y/n) trước khi chạy các lệnh Terminal nguy hiểm.
+5. **Giao diện CLI thân thiện:** Hiển thị màu sắc (nhờ `colorama`) giúp phân biệt rõ ràng các bước tư duy của AI.
 
-## Setup
+---
 
-### Prerequisites
+## 💎 Các điểm cải tiến vượt trội so với phiên bản Claude gốc
 
-- Python 3.8+
-- Anthropic API key (get one at https://console.anthropic.com/)
+* **Lược bỏ hoàn toàn JSON Schema cồng kềnh:** Ở phiên bản viết cho Claude, tác giả phải tự viết các mảng JSON dài dòng để giải thích cấu trúc hàm cho API. Với SDK `google-genai` mới, Gemini cực kỳ thông minh: Nó tự đọc trực tiếp hàm Python thuần, tự phân tích kiểu dữ liệu (`path: str`) và chuỗi tài liệu (`docstring`) để tự biến thành công cụ của nó.
+* **Tích hợp Google Search gốc:** Bản gốc dùng thư viện cào web DuckDuckGo rất dễ bị dính lỗi mạng `503 Service Unavailable` hoặc `Ratelimit` (đặc biệt khi chạy trong mạng công ty chung IP). Chúng ta đã nâng cấp nhúng thẳng công cụ **Google Search chính chủ** của Gemini vào cấu hình. Tốc độ tìm kiếm nhanh gấp bội, thông tin chính xác và hoàn toàn miễn phí.
+* **Vá lỗi SSL mạng doanh nghiệp:** File khởi chạy được tích hợp module xử lý chứng chỉ bảo mật, giúp Python vượt qua các lớp tường lửa/proxy giám sát của công ty vốn hay gây ra lỗi `[SSL: CERTIFICATE_VERIFY_FAILED]`.
+* **Công cụ Ghi nối (`append_file`):** Giải quyết triệt để việc Agent đoán mò chuỗi chữ cũ khi bạn yêu cầu chèn thêm thông tin vào file có sẵn.
 
-### Installation
+---
 
-1. Clone or download this repository
+## 📂 Cấu trúc thư mục dự án
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Create a `.env` file with your API key:
-```bash
-echo "ANTHROPIC_API_KEY=your_api_key_here" > .env
-```
-
-## Usage
-
-Run the agent:
-
-```bash
-python main.py
-```
-
-You'll be prompted to enter your coding task. For example:
-
-```
-> Create a Python script that calculates the fibonacci sequence up to n terms
-```
-
-The agent will:
-1. Think about the task
-2. Use tools to create the file
-3. Optionally test it
-4. Report back to you
-
-### Example Tasks
-
-- "Create a simple calculator in Python"
-- "Add error handling to the existing calculator.py file"
-- "Write unit tests for my fibonacci.py script"
-- "Create a README for this project"
-
-## Tool Confirmations
-
-For safety, you'll be asked to confirm before the agent:
-- Writes or edits files
-- Executes shell commands
-
-Read-only operations (reading files) run automatically.
-
-## Project Structure
-
-```
-.
-├── .env                 # API key (not in git)
-├── .gitignore          # Git ignore rules
-├── README.md           # This file
-├── requirements.txt    # Python dependencies
-├── tools.py           # Tool definitions and execution
-├── agent.py           # ReAct loop implementation
-└── main.py            # CLI interface
-```
-
-## How It Compares to Production Tools
-
-This is a **simplified learning project**. Production tools like Claude Code or Gemini CLI have:
-
-- Multi-file operations
-- Git integration
-- MCP (Model Context Protocol) support
-- Sophisticated permission systems
-- Session management
-- Error recovery
-- Code indexing
-- Much more...
-
-This project has the **core concept** in ~300 lines of Python.
-
-## Technical Details
-
-- **Model**: Claude 3.5 Sonnet (claude-3-5-sonnet-20241022)
-- **API**: Anthropic Messages API with tool use
-- **Max iterations**: 15 (prevents infinite loops)
-- **Tool timeout**: 30 seconds for shell commands
-
-## Extending the Agent
-
-Want to add more tools? Edit `tools.py`:
-
-1. Add a new tool schema to `TOOL_SCHEMAS`
-2. Implement the tool function
-3. Add it to `TOOL_FUNCTIONS` mapping
-
-The agent will automatically use your new tool!
-
-## Troubleshooting
-
-**API key error**: Make sure `.env` exists and contains `ANTHROPIC_API_KEY=...`
-
-**Tool execution fails**: Check file paths are correct and you have appropriate permissions
-
-**Max iterations reached**: The task might be too complex or unclear. Try breaking it into smaller tasks.
-
-## Learn More
-
-- [Anthropic Tool Use Documentation](https://docs.anthropic.com/en/docs/tool-use)
-- [Gemini CLI Architecture](https://github.com/google-gemini/gemini-cli/blob/main/docs/architecture.md)
-- [ReAct Pattern Paper](https://arxiv.org/abs/2210.03629)
-
-## License
-
-This is a learning project - use it however you want!
+```text
+├── .env                  # Lưu trữ GEMINI_API_KEY bảo mật
+├── requirements.txt      # Danh sách thư viện phụ thuộc
+├── tools.py              # Định nghĩa các hàm Python công cụ thuần túy
+├── agent.py              # Trái tim điều khiển vòng lặp ReAct của Gemini
+└── main.py               # Giao diện dòng lệnh CLI & Trình vá lỗi SSL mạng
