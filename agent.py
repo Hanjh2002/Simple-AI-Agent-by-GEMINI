@@ -1,167 +1,87 @@
-"""
-AI Coding Agent with ReAct loop.
-Uses Anthropic's Claude API with tool calling.
-"""
-
 import os
-from typing import List, Dict, Any
-from anthropic import Anthropic
-from tools import TOOL_SCHEMAS, execute_tool
-from ui import (
-    info, warning, error, success, tool_color, dim, bold,
-    print_warning, print_success, print_info, CROSS
-)
+from google import genai
+from google.genai import types
+from colorama import Fore, Style
+import tools  # Import các công cụ chúng ta vừa viết ở bước trước
 
+class GeminiCodingAgent:
+    def __init__(self):
+        # 1. Khởi tạo Client của Google GenAI (Tự động lấy GEMINI_API_KEY từ file .env)
+        self.client = genai.Client()
+        
+        # 2. Định nghĩa danh sách các hàm công cụ thuần Python
+        self.available_tools = [
+            tools.read_file,
+            tools.write_file,
+            tools.edit_file,
+            tools.shell_command,
+            tools.web_search
+        ]
+        
+        # 3. Lựa chọn model: gemini-2.5-flash là lựa chọn tối ưu nhất cho Agent 
+        # nhờ tốc độ phản hồi cực nhanh, giá free tier tốt và khả năng gọi Tool chuẩn xác.
+        self.model_name = "gemini-2.5-flash"
+        
+        # 4. Tạo cấu hình hệ thống (System Instruction) và tích hợp Tools
+        self.config = types.GenerateContentConfig(
+            system_instruction=(
+                "You are an advanced AI coding assistant. You have access to tools "
+                "to interact with the file system, execute terminal commands, and search the web. "
+                "Always use these tools when you need to view, create, edit files, or gather information. "
+                "Be concise, efficient, and precise in your reasoning."
+            ),
+            tools=self.available_tools,
+            temperature=0.2, # Giữ temperature thấp để Agent suy luận logic ổn định hơn
+        )
+        
+        # 5. Khởi tạo phiên Chat (Phiên này tự động quản lý Lịch sử hội thoại/Bộ nhớ cho chúng tra)
+        self.chat = self.client.chats.create(model=self.model_name, config=self.config)
 
-class CodingAgent:
-    """Simple AI coding agent that can read, write, edit files and run shell commands."""
-
-    def __init__(self, api_key: str, model: str = "claude-sonnet-4-5"):
-        """Initialize the agent with API key."""
-        self.client = Anthropic(api_key=api_key)
-        self.model = model
-        self.conversation_history: List[Dict[str, Any]] = []
-
-        # System prompt that guides Claude's behavior
-        self.system_prompt = """You are an expert AI coding assistant that helps users with programming tasks.
-
-You have access to tools that allow you to:
-- read_file: Read existing files to understand the codebase
-- write_file: Create new files or completely overwrite existing ones
-- edit_file: Make targeted edits to existing files
-- shell_command: Execute shell commands (run tests, install packages, etc.)
-
-When given a coding task, follow this approach:
-1. First, use read_file to understand existing code if modifying something
-2. Then, use write_file or edit_file to make changes
-3. Finally, use shell_command to test or verify your changes if appropriate
-
-Think step by step. Use tools iteratively to accomplish the task.
-Always explain what you're doing and why."""
-
-    def run(self, user_prompt: str, max_iterations: int = 15) -> str:
-        """
-        Run the agent with a user prompt using a ReAct loop.
-
-        Args:
-            user_prompt: The user's request
-            max_iterations: Maximum number of tool use iterations (prevents infinite loops)
-
-        Returns:
-            The final response from Claude
-        """
-        # Add user's prompt to existing conversation history
-        self.conversation_history.append({
-            "role": "user",
-            "content": user_prompt
-        })
-
-        iteration = 0
-
-        # ReAct loop: Reason -> Act -> Observe
-        while iteration < max_iterations:
-            iteration += 1
-            print(f"\n{dim('='*60)}")
-            print(f"{bold(f'Iteration {iteration}/{max_iterations}')}")
-            print(f"{dim('='*60)}")
-
-            # Call Claude with current conversation history
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=4096,
-                system=self.system_prompt,
-                tools=TOOL_SCHEMAS,
-                messages=self.conversation_history
-            )
-
-            print(f"\n{dim('Claude response:')}")
-            print(f"{dim(f'Stop reason: {response.stop_reason}')}")
-
-            # Add Claude's response to conversation history
-            assistant_message = {
-                "role": "assistant",
-                "content": response.content
-            }
-            self.conversation_history.append(assistant_message)
-
-            # Check if Claude wants to use tools
-            if response.stop_reason == "tool_use":
-                # Extract tool uses from response
-                tool_uses = [block for block in response.content if block.type == "tool_use"]
-
-                # Also show any thinking/text before tool use
-                text_blocks = [block for block in response.content if block.type == "text"]
-                for text_block in text_blocks:
-                    print(f"\n{dim('Claude thinking:')}")
-                    print(f"{text_block.text}")
-
-                # Execute each tool
-                tool_results = []
-                for tool_use in tool_uses:
-                    print(f"\n{tool_color(f'[TOOL] {tool_use.name}')}")
-                    print(f"{dim(f'Parameters: {tool_use.input}')}")
-
-                    # Ask for user confirmation for dangerous operations
-                    if tool_use.name in ["write_file", "edit_file", "shell_command"]:
-                        confirm = input(f"\n{warning('[!]')} Allow {tool_use.name}? (y/n): ").strip().lower()
-                        if confirm != 'y':
-                            print(f"{error('[CANCELLED]')} Tool execution cancelled by user")
-                            tool_result = {
-                                "success": False,
-                                "error": "Tool execution cancelled by user"
-                            }
-                        else:
-                            # Execute the tool
-                            tool_result = execute_tool(tool_use.name, tool_use.input)
+    def run(self, user_prompt: str):
+        """Kích hoạt vòng lặp ReAct khi người dùng gửi yêu cầu."""
+        print(f"\n{Fore.BLUE}[User]:{Style.RESET_ALL} {user_prompt}")
+        
+        # Gửi tin nhắn đầu tiên của User vào phiên chat
+        response = self.chat.send_message(user_prompt)
+        
+        # Vòng lặp ReAct (Reason + Act): Lặp liên tục nếu Gemini yêu cầu gọi công cụ
+        while response.function_calls:
+            for function_call in response.function_calls:
+                tool_name = function_call.name
+                # Lấy các tham số mà Gemini truyền vào (dưới dạng dictionary)
+                tool_args = function_call.args 
+                
+                print(f"{Fore.CYAN}[Gemini Suy Nghĩ]:{Style.RESET_ALL} Cần sử dụng công cụ {Fore.GREEN}{tool_name}{Style.RESET_ALL} với tham số {tool_args}")
+                
+                # Bản đồ ánh xạ từ tên hàm (string) sang hàm thực thi thực tế trong tools.py
+                tool_result = ""
+                try:
+                    if tool_name == "read_file":
+                        tool_result = tools.read_file(**tool_args)
+                    elif tool_name == "write_file":
+                        tool_result = tools.write_file(**tool_args)
+                    elif tool_name == "edit_file":
+                        tool_result = tools.edit_file(**tool_args)
+                    elif tool_name == "web_search":
+                        tool_result = tools.web_search(**tool_args)
+                    elif tool_name == "shell_command":
+                        tool_result = tools.shell_command(**tool_args)
                     else:
-                        # Read-only operations don't need confirmation
-                        tool_result = execute_tool(tool_use.name, tool_use.input)
-
-                    print(f"{dim('Result:')} {tool_result}")
-
-                    # Format result for Claude
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": tool_use.id,
-                        "content": str(tool_result)
-                    })
-
-                # Add tool results to conversation
-                self.conversation_history.append({
-                    "role": "user",
-                    "content": tool_results
-                })
-
-            elif response.stop_reason == "end_turn":
-                # Claude is done - extract final text response
-                text_blocks = [block for block in response.content if block.type == "text"]
-                final_response = "\n".join([block.text for block in text_blocks])
-
-                print(f"\n{dim('='*60)}")
-                print(f"{bold('FINAL RESPONSE:')}")
-                print(f"{dim('='*60)}")
-                print(final_response)
-
-                return final_response
-
-            else:
-                # Unexpected stop reason
-                print_warning(f"Unexpected stop reason: {response.stop_reason}")
-                text_blocks = [block for block in response.content if block.type == "text"]
-                return "\n".join([block.text for block in text_blocks])
-
-        # Max iterations reached
-        return warning("Maximum iterations reached. The task may not be complete.")
-
-    def get_conversation_history(self) -> List[Dict[str, Any]]:
-        """Get the full conversation history."""
-        return self.conversation_history
-
-    def reset_conversation(self):
-        """Reset the conversation history to start fresh."""
-        self.conversation_history = []
-        print_success("Conversation history cleared. Starting fresh!")
-
-    def get_conversation_length(self) -> int:
-        """Get the number of messages in the conversation history."""
-        return len(self.conversation_history)
+                        tool_result = f"Error: Tool '{tool_name}' không tồn tại."
+                except Exception as e:
+                    tool_result = f"Error khi thực thi tool: {str(e)}"
+                
+                print(f"{Fore.MAGENTA}[Hệ Thống Trả Kết Quả]:{Style.RESET_ALL} Đang gửi kết quả của {tool_name} về cho Gemini...")
+                
+                # Gửi kết quả (Observation) ngược lại cho Gemini để nó đọc và phân tích tiếp
+                response = self.chat.send_message(
+                    types.Part.from_function_response(
+                        name=tool_name,
+                        response={"result": tool_result}
+                    )
+                )
+        
+        # Khi vòng lặp kết thúc (Gemini không gọi tool nữa tức là đã giải quyết xong task)
+        # Trả về văn bản phản hồi cuối cùng cho người dùng
+        return response.text
+    

@@ -1,103 +1,61 @@
-#!/usr/bin/env python3
-"""
-Simple AI Coding Agent - Main CLI Interface
-"""
-
 import os
-import sys
 from dotenv import load_dotenv
-from agent import CodingAgent
-from ui import (
-    print_header, print_success, print_error, print_warning, print_info,
-    info, bold, dim
-)
+from colorama import init, Fore, Style
+from agent import GeminiCodingAgent
 
+# Khởi tạo colorama để tự động reset màu sắc trên mọi hệ điều hành (Windows/macOS/Linux)
+init(autoreset=True)
 
 def main():
-    """Main entry point for the CLI."""
-    print_header("Simple AI Coding Agent")
-
-    # Load environment variables from .env
+    # 1. Tải các biến môi trường từ file .env (Nạp GEMINI_API_KEY)
     load_dotenv()
+    
+    if not os.getenv("GEMINI_API_KEY"):
+        print(f"{Fore.RED}[❌ LỖI] Không tìm thấy GEMINI_API_KEY trong file .env!{Style.RESET_ALL}")
+        print("Vui lòng tạo file .env và thêm dòng: GEMINI_API_KEY=your_key_here")
+        return
 
-    # Get API key
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        print()
-        print_error("ANTHROPIC_API_KEY not found in .env file")
-        print("Please create a .env file with your API key:")
-        print(dim("  ANTHROPIC_API_KEY=your_key_here"))
-        sys.exit(1)
+    print(f"{Fore.GREEN}=================================================={Style.RESET_ALL}")
+    print(f"{Fore.GREEN}   🚀 GEMINI CODING AGENT (FROM SCRATCH) IS READY!  {Style.RESET_ALL}")
+    print(f"{Fore.GREEN}=================================================={Style.RESET_ALL}")
+    print(f"Gõ {Fore.YELLOW}'exit'{Style.RESET_ALL} để thoát chương trình.\n")
 
-    print()
-    print_success("API key loaded")
-
-    # Create agent
-    agent = CodingAgent(api_key=api_key)
-    print_success("Agent initialized with Claude Sonnet 4.5")
-    print()
-    print_info("Available commands:")
-    print(dim("  - 'exit' or 'quit': End the session"))
-    print(dim("  - '/reset': Clear conversation history"))
-    print(dim("  - '/history': Show conversation stats"))
-
-    # Continuous session loop
+    # 2. Khởi tạo Agent
     try:
-        while True:
-            # Get user prompt
-            print()
-            print_header("What would you like me to help you code?")
+        agent = GeminiCodingAgent()
+    except Exception as e:
+        print(f"{Fore.RED}[❌ LỖI] Không thể khởi tạo Agent: {str(e)}{Style.RESET_ALL}")
+        return
 
-            user_prompt = input(f"\n{bold('>')} ").strip()
-
-            # Check for exit commands
-            if user_prompt.lower() in ['exit', 'quit', '/exit', '/quit']:
-                print()
-                print(info("Goodbye!"))
+    # 3. Vòng lặp nhận lệnh từ người dùng
+    while True:
+        try:
+            # Nhận prompt từ bàn phím
+            user_input = input(f"{Fore.YELLOW}ai_agent_cli > {Style.RESET_ALL}").strip()
+            
+            # Kiểm tra nếu người dùng muốn thoát
+            if user_input.lower() == 'exit':
+                print(f"\n{Fore.LIGHTBLACK_EX}Tạm biệt! Chúc bạn một ngày tốt lành.{Style.RESET_ALL}")
                 break
-
-            # Check for reset command
-            if user_prompt.lower() == '/reset':
-                agent.reset_conversation()
+                
+            # Bỏ qua nếu người dùng ấn Enter mà không gõ gì
+            if not user_input:
                 continue
-
-            # Check for history command
-            if user_prompt.lower() == '/history':
-                msg_count = agent.get_conversation_length()
-                print()
-                print_info("Conversation stats:")
-                print(dim(f"  - Messages in history: {msg_count}"))
-                print(dim("  - Use '/reset' to clear history"))
-                continue
-
-            if not user_prompt:
-                print_warning("Empty prompt. Please enter a task or type 'exit' to quit.")
-                continue
-
-            print(f"\n{dim('Running agent with prompt:')}")
-            print(f"{dim(user_prompt)}\n")
-
-            # Run the agent
-            try:
-                result = agent.run(user_prompt)
-                print()
-                print_success("Task completed!")
-                print()
-            except Exception as e:
-                print()
-                print_error(f"Error: {e}")
-                import traceback
-                traceback.print_exc()
-                print()
-                print_warning("Continuing to next task...")
-
-    except KeyboardInterrupt:
-        print("\n")
-        print(info("Interrupted by user. Goodbye!"))
-    except EOFError:
-        print("\n")
-        print(info("Goodbye!"))
-
+                
+            # Chạy Agent và nhận kết quả cuối cùng
+            final_answer = agent.run(user_input)
+            
+            # In câu trả lời cuối cùng của Agent ra màn hình
+            print(f"\n{Fore.GREEN}[Gemini Phản Hồi]:{Style.RESET_ALL}\n{final_answer}\n")
+            print(f"{Fore.LIGHTBLACK_EX}--------------------------------------------------{Style.RESET_ALL}")
+            
+        except KeyboardInterrupt:
+            # Xử lý khi bấm Ctrl+C để thoát mượt mà
+            print(f"\n\n{Fore.LIGHTBLACK_EX}Chương trình bị ngắt bởi người dùng. Đang thoát...{Style.RESET_ALL}")
+            break
+        except Exception as e:
+            print(f"\n{Fore.RED}[❌ LỖI HỆ THỐNG]: {str(e)}{Style.RESET_ALL}\n")
 
 if __name__ == "__main__":
     main()
+    

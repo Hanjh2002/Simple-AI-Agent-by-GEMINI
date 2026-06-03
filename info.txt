@@ -1,0 +1,5 @@
+Các AI agents hiện có mặt trên thị trường:
+
+1. Google Gemini: Trợ lý AI của Google, hỗ trợ viết lách, lập kế hoạch, động não và nhiều hơn nữa.
+2. ChatGPT: Chatbot AI của OpenAI, dùng để khám phá ý tưởng, giải quyết vấn đề và học hỏi nhanh hơn.
+3. DeepAI: Cung cấp nhiều công cụ AI như tạo ảnh, chỉnh sửa ảnh, trò chuyện với AI có khả năng duyệt internet, tạo video ngắn, sáng tác nhạc gốc.
