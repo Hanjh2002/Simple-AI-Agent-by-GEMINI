@@ -28,33 +28,50 @@ def main():
         return
 
     # 3. Vòng lặp nhận lệnh từ người dùng
-    while True:
-        try:
+    try:
+        while True:
             # Nhận prompt từ bàn phím
             user_input = input(f"{Fore.YELLOW}ai_agent_cli > {Style.RESET_ALL}").strip()
-            
-            # Kiểm tra nếu người dùng muốn thoát
-            if user_input.lower() == 'exit':
+
+            # Kiểm tra các lệnh thoát
+            if user_input.lower() in ['exit', 'quit', '/exit', '/quit']:
                 print(f"\n{Fore.LIGHTBLACK_EX}Tạm biệt! Chúc bạn một ngày tốt lành.{Style.RESET_ALL}")
                 break
-                
+
+            # Lệnh reset hội thoại
+            if user_input.lower() == '/reset':
+                agent.reset_conversation()
+                print(f"{Fore.LIGHTBLACK_EX}Đã xóa lịch sử hội thoại.{Style.RESET_ALL}")
+                continue
+
+            # Lệnh xem lịch sử
+            if user_input.lower() == '/history':
+                msg_count = agent.get_conversation_length()
+                print(f"\n{Fore.CYAN}Thống kê hội thoại:{Style.RESET_ALL}")
+                print(f"{Fore.LIGHTBLACK_EX}  - Số tin nhắn trong lịch sử: {msg_count}{Style.RESET_ALL}")
+                print(f"{Fore.LIGHTBLACK_EX}  - Dùng '/reset' để xóa lịch sử{Style.RESET_ALL}")
+                continue
+
             # Bỏ qua nếu người dùng ấn Enter mà không gõ gì
             if not user_input:
+                print(f"{Fore.LIGHTBLACK_EX}Prompt trống. Nhập một task hoặc gõ 'exit' để thoát.{Style.RESET_ALL}")
                 continue
-                
-            # Chạy Agent và nhận kết quả cuối cùng
-            final_answer = agent.run(user_input)
-            
-            # In câu trả lời cuối cùng của Agent ra màn hình
-            print(f"\n{Fore.GREEN}[Gemini Phản Hồi]:{Style.RESET_ALL}\n{final_answer}\n")
-            print(f"{Fore.LIGHTBLACK_EX}--------------------------------------------------{Style.RESET_ALL}")
-            
-        except KeyboardInterrupt:
-            # Xử lý khi bấm Ctrl+C để thoát mượt mà
-            print(f"\n\n{Fore.LIGHTBLACK_EX}Chương trình bị ngắt bởi người dùng. Đang thoát...{Style.RESET_ALL}")
-            break
-        except Exception as e:
-            print(f"\n{Fore.RED}[❌ LỖI HỆ THỐNG]: {str(e)}{Style.RESET_ALL}\n")
+
+            # Chạy Agent — bắt lỗi riêng để vòng lặp không bị ngắt
+            try:
+                final_answer = agent.run(user_input)
+                print(f"\n{Fore.GREEN}[Gemini Phản Hồi]:{Style.RESET_ALL}\n{final_answer}\n")
+                print(f"{Fore.LIGHTBLACK_EX}{'-' * 50}{Style.RESET_ALL}")
+            except Exception as e:
+                print(f"\n{Fore.RED}[❌ LỖI]: {str(e)}{Style.RESET_ALL}")
+                import traceback
+                traceback.print_exc()
+                print(f"{Fore.LIGHTBLACK_EX}Tiếp tục với task kế tiếp...{Style.RESET_ALL}\n")
+
+    except KeyboardInterrupt:
+        print(f"\n\n{Fore.LIGHTBLACK_EX}Chương trình bị ngắt bởi người dùng. Đang thoát...{Style.RESET_ALL}")
+    except EOFError:
+        print(f"\n\n{Fore.LIGHTBLACK_EX}Tạm biệt!{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     main()
